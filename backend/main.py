@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Generator
+import json
 
 app = FastAPI(title="InsightFinder API")
 
@@ -89,6 +90,40 @@ def gerar_resposta(prompt, modelo=OLLAMA_MODEL):
         return response.json()['response'].strip()
     except Exception as e:
         return "Erro"
+
+def buscar_stream(req: SearchRequest):
+    def generator():
+        for root, _, files in os.walk(req.folder):
+            for nome_arquivo in files:
+                ext = os.path.splitext(nome_arquivo)[1].lower()
+                if ext not in req.extensions:
+                    continue
+                caminho = os.path.join(root, nome_arquivo)
+                conteudo = ler_arquivo(caminho)
+                if not conteudo.strip():
+                    continue
+                prompt = f"""
+Estou procurando arquivos que tenham relação com esta frase:
+"{req.query}"
+
+Abaixo está o conteúdo do arquivo:
+{conteudo[:2000]}
+
+Esse conteúdo tem relação direta com a frase acima?
+Responda 'Sim' ou 'Não' e justifique em uma linha.
+"""
+                resposta = gerar_resposta(prompt)
+                if "sim" in resposta.lower():
+                    # Envia resultado como JSON por linha
+                    yield json.dumps({
+                        "file_path": caminho,
+                        "ia_response": resposta
+                    }) + "\n"
+    return generator()
+
+@app.post("/api/search/stream")
+def search_files_stream(req: SearchRequest):
+    return StreamingResponse(buscar_stream(req), media_type="application/x-ndjson")
 
 @app.post("/api/search", response_model=List[SearchResult])
 async def search_files(req: SearchRequest):
