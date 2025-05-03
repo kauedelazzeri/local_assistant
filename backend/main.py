@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Generator
 import json
+from pathlib import Path
 
 app = FastAPI(title="InsightFinder API")
 
@@ -63,17 +64,18 @@ def gerar_resposta(prompt, modelo=OLLAMA_MODEL):
 
 def buscar_stream(req: SearchRequest):
     def generator():
-        for root, _, files in os.walk(req.folder):
+        folder = req.folder.strip() if req.folder else ""
+        base_folder = folder or str(Path.home() / "Downloads")
+
+        for root, _, files in os.walk(base_folder):
             for nome_arquivo in files:
                 ext = os.path.splitext(nome_arquivo)[1].lower()
                 if ext not in req.extensions:
                     continue
-
                 caminho = os.path.join(root, nome_arquivo)
                 conteudo = ler_arquivo(caminho)
                 if not conteudo.strip():
                     continue
-
                 prompt = f"""
 Estou procurando arquivos que tenham relação com esta frase:
 "{req.query}"
@@ -84,12 +86,11 @@ Abaixo está o conteúdo do arquivo:
 Esse conteúdo tem relação direta com a frase acima?
 Responda 'Sim' ou 'Não' e justifique em uma linha.
 """
-
                 resposta = gerar_resposta(prompt)
                 if "sim" in resposta.lower():
                     yield json.dumps({
                         "file_path": caminho,
-                        "ia_response": resposta.strip()
+                        "ia_response": resposta
                     }) + "\n"
     return generator()
 

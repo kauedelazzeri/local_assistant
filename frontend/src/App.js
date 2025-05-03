@@ -3,6 +3,7 @@ import axios from 'axios';
 import { BsFileEarmarkText, BsFolder2Open, BsCheckCircle, BsXCircle } from 'react-icons/bs';
 import './App.css';
 
+
 const API_URL = 'http://localhost:8000/api';
 const EXT_OPTIONS = [
   { label: '.txt', value: '.txt' },
@@ -30,7 +31,7 @@ function getDefaultDownloadFolder() {
 
 function App() {
   const [query, setQuery] = useState('');
-  const [folder, setFolder] = useState(getDefaultDownloadFolder());
+  const [folder, setFolder] = useState('');
   const [extensions, setExtensions] = useState(['.txt', '.pdf']);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -113,7 +114,7 @@ function App() {
               </div>
               <div className="col-12">
                 <label className="form-label fw-semibold"><BsFolder2Open /> Pasta</label>
-                <input type="text" className="form-control" value={folder} onChange={e => setFolder(e.target.value)} required />
+                <input type="text" className="form-control" value={folder} onChange={e => setFolder(e.target.value)} placeholder="(opcional) Ex: C:\\Users\\SeuUser\\Downloads" />
               </div>
               <div className="col-12">
                 <label className="form-label fw-semibold">📄 Extensões</label>
