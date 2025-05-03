@@ -36,10 +36,24 @@ cd frontend
 npm install
 ```
 
-4. Configure as variáveis de ambiente:
+## ⚙️ Como usar IA local com Ollama
+
+1. Baixe e instale o [Ollama](https://ollama.com/download).
+2. Após instalar, rode no terminal:
 ```bash
-cp .env.example .env
-# Edite o arquivo .env com suas configurações
+ollama run llama2
+```
+3. Para usar outro modelo, como `phi`, `mistral`, ou `llava`, execute:
+```bash
+ollama run nome-do-modelo
+```
+4. Para trocar o modelo padrão no código, edite o arquivo:
+```bash
+backend/main.py
+```
+E altere a linha:
+```python
+OLLAMA_MODEL = "llama2"
 ```
 
 ## 🚀 Executando
@@ -52,10 +66,14 @@ python backend/main.py
 2. Em outro terminal, inicie o frontend:
 ```bash
 cd frontend
-npm run dev
+npm start
+```
+2. Em outro terminal, inicie o servidor llama2:
+```bash
+ollama serve
 ```
 
-3. Acesse a aplicação em `http://localhost:3000`
+4. Acesse a aplicação em `http://localhost:3000`
 
 ## 📁 Estrutura do Projeto
 
@@ -75,9 +93,13 @@ insight-finder/
 └── README.md
 ```
 
+## 📂 Caminho padrão de busca
+
+O projeto tenta automaticamente definir a pasta padrão de busca como a pasta de Downloads do sistema (Windows). O campo pode ser editado manualmente na interface.
+
 ## 🔒 Privacidade
 
-- Toda a processamento é feito localmente
+- Todo o processamento é feito localmente
 - Nenhum dado é enviado para a internet
 - Os arquivos são indexados apenas nas pastas autorizadas
 
