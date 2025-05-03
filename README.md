@@ -21,16 +21,21 @@ Uma aplicação local que permite buscar informações em linguagem natural dent
 
 1. Clone o repositório:
 ```bash
-git clone https://github.com/seu-usuario/insight-finder.git
-cd insight-finder
+git clone https://github.com/seu-usuario/local_assistant.git
+cd local_assistant
 ```
-
-2. Instale as dependências do backend:
+2. Crie e ative um ambiente virtual:
+# Windows (cmd) ou PowerShell
 ```bash
+python -m venv venv
+venv\Scripts\activate
+```
+3. Instale as dependências do backend dentro do ambiente virutal:
+```bash
+cd backend
 pip install -r requirements.txt
 ```
-
-3. Instale as dependências do frontend:
+4. Instale as dependências do frontend em outro terminal:
 ```bash
 cd frontend
 npm install
@@ -39,7 +44,7 @@ npm install
 ## ⚙️ Como usar IA local com Ollama
 
 1. Baixe e instale o [Ollama](https://ollama.com/download).
-2. Após instalar, rode no terminal:
+2. Após instalar, rode em outro terminal:
 ```bash
 ollama run llama2
 ```
@@ -58,22 +63,28 @@ OLLAMA_MODEL = "llama2"
 
 ## 🚀 Executando
 
-1. Inicie o backend:
+1. Ative o ambiente virtual (caso ainda não esteja ativo):
+# Windows (cmd)
 ```bash
-python backend/main.py
+venv\Scripts\activate
+```
+2. Inicie o backend com FastAPI no ambiente virtual:
+```python
+cd backend
+uvicorn main:app --reload
 ```
 
-2. Em outro terminal, inicie o frontend:
+3. Em outro terminal, inicie o frontend:
 ```bash
 cd frontend
 npm start
 ```
-2. Em outro terminal, inicie o servidor llama2:
+4. Em outro terminal, inicie o servidor llama2:
 ```bash
 ollama serve
 ```
 
-4. Acesse a aplicação em `http://localhost:3000`
+4. Acesse a aplicação em `http://localhost:3000`, o node deve abrir automaticamente no navegador
 
 ## 📁 Estrutura do Projeto
 
@@ -81,10 +92,6 @@ ollama serve
 insight-finder/
 ├── backend/
 │   ├── main.py
-│   ├── config.py
-│   ├── models/
-│   ├── services/
-│   └── utils/
 ├── frontend/
 │   ├── src/
 │   ├── public/
