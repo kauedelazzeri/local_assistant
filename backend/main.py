@@ -1,10 +1,3 @@
-# backend_main.py
-
-"""
-Backend para busca semântica local em arquivos .txt e .pdf usando modelo Ollama.
-Expõe uma API via FastAPI para frontend interagir com suporte a stream.
-"""
-
 import os
 import fitz  # PyMuPDF
 import requests
@@ -26,19 +19,12 @@ app.add_middleware(
 )
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
-EXTENSOES_SUPORTADAS = ['.txt', '.pdf']
-PASTA_BUSCA = r"C:\Users\kaue\Downloads\Nova pasta"  # Altere aqui
-EXTENSAO = ".txt"
 OLLAMA_MODEL = "llama2"
 
 class SearchRequest(BaseModel):
     query: str
     folder: str
     extensions: List[str]
-
-class Resultado(BaseModel):
-    caminho: str
-    justificativa: str
 
 class SearchResult(BaseModel):
     file_path: str
@@ -55,7 +41,6 @@ def ler_arquivo(caminho):
                 continue
         print(f"[!] Erro ao ler {caminho} com os encodings disponíveis.")
         return ""
-
     elif ext == '.pdf':
         try:
             doc = fitz.open(caminho)
@@ -63,22 +48,7 @@ def ler_arquivo(caminho):
         except Exception as e:
             print(f"[!] Erro ao ler PDF {caminho}: {e}")
             return ""
-
     return ""
-
-def gerar_stream_resposta(prompt, modelo="llama2") -> Generator[str, None, None]:
-    try:
-        response = requests.post(OLLAMA_URL, json={
-            "model": modelo,
-            "prompt": prompt,
-            "stream": True
-        }, stream=True)
-
-        for line in response.iter_lines():
-            if line:
-                yield line.decode('utf-8') + "\n"
-    except Exception as e:
-        yield f"[Erro ao conectar ao Ollama: {e}]\n"
 
 def gerar_resposta(prompt, modelo=OLLAMA_MODEL):
     try:
@@ -89,7 +59,7 @@ def gerar_resposta(prompt, modelo=OLLAMA_MODEL):
         })
         return response.json()['response'].strip()
     except Exception as e:
-        return "Erro"
+        return f"Erro: {str(e)}"
 
 def buscar_stream(req: SearchRequest):
     def generator():
@@ -98,10 +68,12 @@ def buscar_stream(req: SearchRequest):
                 ext = os.path.splitext(nome_arquivo)[1].lower()
                 if ext not in req.extensions:
                     continue
+
                 caminho = os.path.join(root, nome_arquivo)
                 conteudo = ler_arquivo(caminho)
                 if not conteudo.strip():
                     continue
+
                 prompt = f"""
 Estou procurando arquivos que tenham relação com esta frase:
 "{req.query}"
@@ -112,12 +84,12 @@ Abaixo está o conteúdo do arquivo:
 Esse conteúdo tem relação direta com a frase acima?
 Responda 'Sim' ou 'Não' e justifique em uma linha.
 """
+
                 resposta = gerar_resposta(prompt)
                 if "sim" in resposta.lower():
-                    # Envia resultado como JSON por linha
                     yield json.dumps({
                         "file_path": caminho,
-                        "ia_response": resposta
+                        "ia_response": resposta.strip()
                     }) + "\n"
     return generator()
 
@@ -166,4 +138,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("backend_main:app", host="0.0.0.0", port=8000, reload=True)

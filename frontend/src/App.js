@@ -1,16 +1,36 @@
 import React, { useState, useRef } from 'react';
 import axios from 'axios';
+import { BsFileEarmarkText, BsFolder2Open, BsCheckCircle, BsXCircle } from 'react-icons/bs';
+import './App.css';
 
 const API_URL = 'http://localhost:8000/api';
-
 const EXT_OPTIONS = [
   { label: '.txt', value: '.txt' },
   { label: '.pdf', value: '.pdf' },
 ];
 
+function parseIaResponse(resp) {
+  if (!resp) return { answer: '', justification: '' };
+  const lower = resp.toLowerCase();
+  if (lower.startsWith('sim')) {
+    const [answer, ...rest] = resp.split(/\.\s|:/);
+    return { answer: 'Sim', justification: rest.join('.').trim() };
+  }
+  if (lower.startsWith('não') || lower.startsWith('nao')) {
+    const [answer, ...rest] = resp.split(/\.\s|:/);
+    return { answer: 'Não', justification: rest.join('.').trim() };
+  }
+  return { answer: '', justification: resp };
+}
+
+function getDefaultDownloadFolder() {
+  const user = window?.navigator?.userAgent?.includes('Windows') ? process.env.USERNAME : process.env.USER;
+  return `C:\\Users\\${user || 'SeuUsuario'}\\Downloads`;
+}
+
 function App() {
   const [query, setQuery] = useState('');
-  const [folder, setFolder] = useState('C:\\Users\\kaue\\Downloads\\Novapasta');
+  const [folder, setFolder] = useState(getDefaultDownloadFolder());
   const [extensions, setExtensions] = useState(['.txt', '.pdf']);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -19,9 +39,7 @@ function App() {
 
   const handleExtChange = (ext) => {
     setExtensions((prev) =>
-      prev.includes(ext)
-        ? prev.filter((e) => e !== ext)
-        : [...prev, ext]
+      prev.includes(ext) ? prev.filter((e) => e !== ext) : [...prev, ext]
     );
   };
 
@@ -49,15 +67,16 @@ function App() {
         for (const line of lines) {
           if (line.trim()) {
             try {
-              const obj = JSON.parse(line);
-              setResults((prev) => [...prev, obj]);
-              // Scroll para o último resultado
-              setTimeout(() => {
-                if (resultsRef.current) {
-                  resultsRef.current.scrollTop = resultsRef.current.scrollHeight;
-                }
-              }, 100);
-            } catch {}
+              const parsed = JSON.parse(line);
+              setResults((prev) => [...prev, parsed]);
+            } catch {
+              console.warn('Linha inválida:', line);
+            }
+            setTimeout(() => {
+              if (resultsRef.current) {
+                resultsRef.current.scrollTop = resultsRef.current.scrollHeight;
+              }
+            }, 100);
           }
         }
       }
@@ -71,98 +90,77 @@ function App() {
   const handleOpenFile = async (filePath) => {
     try {
       await axios.post(`${API_URL}/open`, { file_path: filePath });
-    } catch (err) {
-      alert('Não foi possível abrir o arquivo.');
+    } catch {
+      alert('Erro ao tentar abrir o arquivo.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-gray-100 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-xl border border-blue-100">
-        <h2 className="text-3xl font-extrabold mb-6 flex items-center gap-2 text-blue-700">
-          <span role="img" aria-label="lupa">🔍</span> Busca Inteligente de Arquivos
-        </h2>
-        <form onSubmit={handleSearch} className="space-y-4">
-          <div>
-            <label className="block font-semibold mb-1 flex items-center gap-2 text-blue-900">
-              <span role="img" aria-label="abc">🔤</span> Termo de busca
-            </label>
-            <input
-              type="text"
-              className="w-full border-2 border-blue-200 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-300"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              required
-            />
+    <div className="bg-light py-5 min-vh-100">
+      <div className="container" style={{ maxWidth: 720 }}>
+        <div className="card border-0 shadow-lg rounded-4 p-4">
+          <div className="text-center mb-4">
+            <h2 className="fw-bold mb-1 fs-2">
+              <BsFileEarmarkText /> Busca Inteligente
+            </h2>
+            <p className="text-muted small">Use IA local para encontrar arquivos relevantes com base no conteúdo</p>
           </div>
-          <div>
-            <label className="block font-semibold mb-1 flex items-center gap-2 text-blue-900">
-              <span role="img" aria-label="pasta">📁</span> Pasta (ex: C:\Users\kaue\Downloads)
-            </label>
-            <input
-              type="text"
-              className="w-full border-2 border-blue-200 rounded px-3 py-2 focus:border-blue-500 focus:ring-1 focus:ring-blue-300"
-              value={folder}
-              onChange={e => setFolder(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="block font-semibold mb-1 flex items-center gap-2 text-blue-900">
-              <span role="img" aria-label="extensoes">📄</span> Extensões
-            </label>
-            <div className="flex gap-4">
-              {EXT_OPTIONS.map(opt => (
-                <label key={opt.value} className="flex items-center gap-1">
-                  <input
-                    type="checkbox"
-                    checked={extensions.includes(opt.value)}
-                    onChange={() => handleExtChange(opt.value)}
-                  />
-                  {opt.label}
-                </label>
-              ))}
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="bg-gradient-to-r from-blue-500 to-blue-700 text-white px-6 py-2 rounded font-semibold mt-2 shadow hover:from-blue-600 hover:to-blue-800 transition"
-            disabled={loading}
-          >
-            {loading ? (
-              <span className="flex items-center gap-2"><span className="animate-spin inline-block w-5 h-5 border-2 border-white border-t-blue-300 rounded-full"></span> Buscando...</span>
-            ) : 'Buscar'}
-          </button>
-        </form>
-        <div className="mt-8">
-          {error && <div className="text-red-600 mb-2">{error}</div>}
-          <div ref={resultsRef} className="max-h-80 overflow-y-auto space-y-4 pr-1">
-            {results.length > 0 ? (
-              <ul className="space-y-4">
-                {results.map((result, idx) => (
-                  <li key={idx} className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded shadow flex flex-col gap-2 border border-blue-200">
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-700 font-mono text-xs flex-1 truncate">{result.file_path}</span>
-                      <button
-                        onClick={() => handleOpenFile(result.file_path)}
-                        className="ml-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-700 shadow"
-                      >
-                        Abrir
-                      </button>
+          <form onSubmit={handleSearch} className="mb-4">
+            <div className="row g-3">
+              <div className="col-12">
+                <label className="form-label fw-semibold">🔍 Termo de busca</label>
+                <input type="text" className="form-control" value={query} onChange={e => setQuery(e.target.value)} required />
+              </div>
+              <div className="col-12">
+                <label className="form-label fw-semibold"><BsFolder2Open /> Pasta</label>
+                <input type="text" className="form-control" value={folder} onChange={e => setFolder(e.target.value)} required />
+              </div>
+              <div className="col-12">
+                <label className="form-label fw-semibold">📄 Extensões</label>
+                <div className="d-flex gap-3">
+                  {EXT_OPTIONS.map(opt => (
+                    <div key={opt.value} className="form-check">
+                      <input className="form-check-input" type="checkbox" checked={extensions.includes(opt.value)} onChange={() => handleExtChange(opt.value)} id={opt.value} />
+                      <label className="form-check-label" htmlFor={opt.value}>{opt.label}</label>
                     </div>
-                    <div className="text-green-700 text-sm font-mono">
-                      {result.ia_response}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              !loading && (
-                <div className="text-center text-gray-500 mt-8">
-                  Nenhum resultado encontrado<br />
-                  Tente uma busca diferente ou verifique se os arquivos foram indexados.
+                  ))}
                 </div>
-              )
+              </div>
+            </div>
+            <button type="submit" className="btn btn-primary w-100 mt-3 fw-bold" disabled={loading}>
+              {loading ? 'Buscando...' : '🔎 Buscar'}
+            </button>
+          </form>
+          {error && <div className="alert alert-danger text-center">{error}</div>}
+
+          <div ref={resultsRef} className="overflow-auto" style={{ maxHeight: 450 }}>
+            {results.length > 0 ? (
+              <ul className="list-group">
+                {results.map((r, i) => {
+                  const { answer, justification } = parseIaResponse(r.ia_response);
+                  const fileName = r.file_path ? r.file_path.split(/\\|\//).pop() : '';
+                  return (
+                    <li key={i} className="list-group-item border rounded mb-2 shadow-sm">
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                          <span className="fw-bold fs-5" title={r.file_path}>{fileName}</span>
+                          <div className="text-muted small" title={r.file_path} style={{ maxWidth: 500, wordBreak: 'break-word' }}>{r.file_path}</div>
+                        </div>
+                        <button onClick={() => handleOpenFile(r.file_path)} className="btn btn-outline-dark btn-sm ms-3">Abrir</button>
+                      </div>
+                      <div className="d-flex flex-wrap gap-3 align-items-center">
+                        <span className={`badge ${answer === 'Sim' ? 'bg-success' : answer === 'Não' ? 'bg-danger' : 'bg-secondary'} px-3 py-2 fs-6 fw-semibold`}>
+                          {answer === 'Sim' ? <BsCheckCircle className="me-1" /> : answer === 'Não' ? <BsXCircle className="me-1" /> : null}
+                          {answer}
+                        </span>
+                        <span className="text-dark small"><strong>Justificativa:</strong> {justification}</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : !loading && (
+              <div className="alert alert-secondary text-center">Nenhum arquivo encontrado. 🧐</div>
             )}
           </div>
         </div>
